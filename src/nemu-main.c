@@ -12,8 +12,8 @@
 *
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
-
 #include <common.h>
+#include "monitor/sdb/sdb.h"
 
 void init_monitor(int, char *[]);
 void am_init_monitor();
