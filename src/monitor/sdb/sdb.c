@@ -462,6 +462,7 @@ void test_expr() {
 }
 
 void init_sdb() {
+  sdb_set_batch_mode();
   /* Compile the regular expressions. */
   init_regex();
   /* Test the expression calculator. */
