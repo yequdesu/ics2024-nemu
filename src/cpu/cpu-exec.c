@@ -10,14 +10,14 @@
 * EITHER EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO NON-INFRINGEMENT,
 * MERCHANTABILITY OR FIT FOR A PARTICULAR PURPOSE.
 *
-* See the Mulan PSL v2 for more details.
+* See the Mulan PSL v2 for more deir_tails.
 ***************************************************************************************/
 
 #include <cpu/cpu.h>
 #include <cpu/decode.h>
 #include <cpu/difftest.h>
 #include <locale.h>
-#include "../src/monitor/sdb/sdb.h"
+#include <sdb/sdb.h>
 
 /* The assembly code of instructions executed is only output to the screen
  * when the number of instructions executed is less than this value.
@@ -25,11 +25,112 @@
  * You can modify this value as you want.
  */
 #define MAX_INST_TO_PRINT 10
+#define RINGBUF_SIZE 10
 
 CPU_state cpu = {};
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us
 static bool g_print_step = false;
+static int ir_head = 0, ir_tail = 0, ir_size = 0;
+static char buf[RINGBUF_SIZE][500] = {};
+
+void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+
+static void insert_iringbuf(const char i[], int *ir_size, int *ir_head, int *ir_tail) {
+    strncpy(buf[*ir_tail], i, sizeof(buf[*ir_tail]) - 1);
+    buf[*ir_tail][sizeof(buf[*ir_tail]) - 1] = '\0';
+    
+    (*ir_size)++;
+    *ir_tail = (*ir_tail + 1) % RINGBUF_SIZE;
+    
+    if (*ir_size > RINGBUF_SIZE) {
+        *ir_size = RINGBUF_SIZE;
+        *ir_head = (*ir_head + 1) % RINGBUF_SIZE;
+    }
+    
+    // printf("size:%d ir_tail:%d ir_head:%d, ins:%s \n", *ir_size, *ir_tail, *ir_head, i);
+}
+
+static void display_iringbuf(const int ir_size, const int ir_head, const int ir_tail) {
+    if (ir_size == 0) {
+        printf("Buffer is empty\n");
+        return;
+    }
+    
+    int current = ir_head;
+    for (int i = 0; i < ir_size; i++) {
+        printf("%s\n", buf[current]);
+        current = (current + 1) % RINGBUF_SIZE;
+    }
+}
+
+static char* generate_inst_info(const Decode s, bool trap) {
+  static char output_buf[128] = {};
+  static char err_pre_buf[5] = "--> ";
+  static char normal_pre_buf[5] = "    ";
+  static char disasm_buf[64] = {};
+  static char code_buf[59] = {};
+
+  output_buf[0] = '\0';
+  disasm_buf[0] = '\0';
+  code_buf[0] = '\0';
+
+  char *p = disasm_buf;
+  int pc_len = snprintf(p, sizeof(disasm_buf), FMT_WORD ":", s.pc);
+  p += pc_len;
+  int ilen = s.snpc - s.pc;
+  char temp_buf[64] = {};
+  disassemble(temp_buf, sizeof(temp_buf),
+             MUXDEF(CONFIG_ISA_x86, s.snpc, s.pc), 
+             (uint8_t *)&s.isa.inst, ilen);
+  
+  char *src = temp_buf;
+  while (*src && p < disasm_buf + sizeof(disasm_buf) - 1) {
+    if (*src == '\t') {
+      int spaces = 4 - ((p - disasm_buf) % 4);
+      memset(p, ' ', spaces);
+      p += spaces;
+      src++;
+    } else {
+      *p++ = *src++;
+    }
+  }
+  *p = '\0';
+  
+  int c_len = 0;
+  for (char *c = disasm_buf; *c && *c != '\0'; c++) {
+    if (*c != '\0') c_len++;
+  }
+  int t_len = 36;
+  if (c_len < t_len) {
+    int spaces = t_len - c_len;
+    if (p + spaces < disasm_buf + sizeof(disasm_buf)) {
+      memset(p, ' ', spaces);
+      p += spaces;
+    }
+  }
+  *p = '\0';
+  
+  p = code_buf;
+  uint8_t *inst = (uint8_t *)&s.isa.inst;
+  for (int i = ilen - 1; i >= 0; i--) {
+    p += snprintf(p, code_buf + sizeof(code_buf) - p, "%02x ", inst[i]);
+  }
+
+  if(trap) {
+    strncpy(output_buf, err_pre_buf, sizeof(output_buf) - 1);
+  } else {
+    strncpy(output_buf, normal_pre_buf, sizeof(output_buf) - 1);
+  }
+  strncat(output_buf, disasm_buf, sizeof(output_buf) - strlen(output_buf) - 1);
+  strncat(output_buf, code_buf, sizeof(output_buf) - strlen(output_buf) - 1);
+  
+  return output_buf;
+}
+
+
+
+
 
 void device_update();
 
@@ -52,7 +153,9 @@ static void exec_once(Decode *s, vaddr_t pc) {
   cpu.pc = s->dnpc;
 #ifdef CONFIG_ITRACE
   char *p = s->logbuf;
+  // 0x800000f4: 01 41 2a 83 lw      s5, 0x14(sp)
   p += snprintf(p, sizeof(s->logbuf), FMT_WORD ":", s->pc);
+  // 0x800000f4:
   int ilen = s->snpc - s->pc;
   int i;
   uint8_t *inst = (uint8_t *)&s->isa.inst;
@@ -63,16 +166,18 @@ static void exec_once(Decode *s, vaddr_t pc) {
 #endif
     p += snprintf(p, 4, " %02x", inst[i]);
   }
+  // 0x800000f4: 01 41 2a 83
   int ilen_max = MUXDEF(CONFIG_ISA_x86, 8, 4);
   int space_len = ilen_max - ilen;
   if (space_len < 0) space_len = 0;
   space_len = space_len * 3 + 1;
   memset(p, ' ', space_len);
   p += space_len;
-
-  void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+  // 0x800000f4: 01 41 2a 83 
+  // void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
   disassemble(p, s->logbuf + sizeof(s->logbuf) - p,
       MUXDEF(CONFIG_ISA_x86, s->snpc, s->pc), (uint8_t *)&s->isa.inst, ilen);
+  insert_iringbuf(generate_inst_info(*s, nemu_state.state != NEMU_RUNNING), &ir_size, &ir_head, &ir_tail);
 #endif
 }
 
@@ -99,6 +204,7 @@ static void statistic() {
 void assert_fail_msg() {
   isa_reg_display();
   statistic();
+  display_iringbuf(ir_size, ir_head, ir_tail);
 }
 
 /* Simulate how the CPU works. */
@@ -130,4 +236,5 @@ void cpu_exec(uint64_t n) {
       // fall through
     case NEMU_QUIT: statistic();
   }
+  // display_iringbuf(ir_size, ir_head, ir_tail);
 }

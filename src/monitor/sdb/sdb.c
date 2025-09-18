@@ -17,12 +17,16 @@
 #include <cpu/cpu.h>
 #include <readline/readline.h>
 #include <readline/history.h>
-#include "sdb.h"
+#include <sdb/sdb.h>
 #include <memory/paddr.h>
 
 #define TEST_LENS 1000
 
+#ifdef CONFIG_BATCHMODE
+static int is_batch_mode = true;
+#else
 static int is_batch_mode = false;
+#endif
 
 void init_regex();
 void init_wp_pool();
@@ -455,18 +459,9 @@ void sdb_mainloop() {
   }
 }
 
-
-
-void test_expr() {
-    
-}
-
 void init_sdb() {
-  sdb_set_batch_mode();
   /* Compile the regular expressions. */
   init_regex();
-  /* Test the expression calculator. */
-  test_expr();
   /* Initialize the watchpoint pool. */
   init_wp_pool();
 }
