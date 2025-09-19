@@ -67,6 +67,17 @@ uint64_t get_time();
   } while (0) \
 )
 
+#define mtrace_log_write(...) IFDEF(CONFIG_MTRACE, \
+  do { \
+    extern FILE* mtrace_log_fp; \
+    extern bool mtrace_log_enable(); \
+    if (mtrace_log_enable() && mtrace_log_fp != NULL) { \
+      fprintf(mtrace_log_fp, __VA_ARGS__); \
+      fflush(mtrace_log_fp); \
+    } \
+  } while (0) \
+)
+
 #define _Log(...) \
   do { \
     printf(__VA_ARGS__); \

@@ -15,6 +15,7 @@
 
 #include <isa.h>
 #include <memory/paddr.h>
+#include <memory/mtrace.h>
 
 void init_rand();
 void init_log(const char *log_file);
@@ -107,6 +108,9 @@ void init_monitor(int argc, char *argv[]) {
 
   /* Open the log file. */
   init_log(log_file);
+
+  /* Initialize mtrace. */
+  init_mtrace();
 
   /* Initialize memory. */
   init_mem();
