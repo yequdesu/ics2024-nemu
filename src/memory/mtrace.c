@@ -13,9 +13,14 @@
 * See the Mulan PSL v2 for more details.
 ***************************************************************************************/
 #include <memory/mtrace.h>
+#include <memory/paddr.h>
+#include <memory/host.h>
 #include <stdarg.h>
+#include <isa.h>
+
 #define MTRACE_LOG_BUF_SIZE 256
 FILE *mtrace_log_fp = NULL;
+extern CPU_state cpu;
 
 // Nemu's log records call terminal instructions through makefile, passing in the path. 
 // mtrace does not change the architecture to affect stability,
@@ -34,13 +39,14 @@ static char* generate_mtrace_log(const char *op_type, paddr_t addr, int len, ...
     va_start(args, len);
     
     if (strcmp(op_type, "read") == 0) {
+        word_t data = host_read(guest_to_host(addr), len);
         snprintf(log_buf, sizeof(log_buf), 
-                 "[READ]   addr: 0x%08x, len: %d bytes", addr, len);
+                 "[READ]   pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x", cpu.pc, addr, len, data);
     } 
     else if (strcmp(op_type, "write") == 0) {
         word_t data = va_arg(args, word_t);
         snprintf(log_buf, sizeof(log_buf), 
-                 "[WRITE]  addr: 0x%08x, len: %d bytes, data: 0x%08x", addr, len, data);
+                 "[WRITE]  pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x", cpu.pc, addr, len, data);
     }
     else {
         snprintf(log_buf, sizeof(log_buf), 
@@ -52,9 +58,9 @@ static char* generate_mtrace_log(const char *op_type, paddr_t addr, int len, ...
 #endif
 
 void mtrace_read_record(paddr_t addr, int len) {
-    mtrace_log_write("%s\n", generate_mtrace_log("write", addr, len));
+    mtrace_log_write("%s\n", generate_mtrace_log("read", addr, len));
 }
 
 void mtrace_write_record(paddr_t addr, int len, word_t data) {
-    mtrace_log_write("%s\n", generate_mtrace_log("read", addr, len, data));
+    mtrace_log_write("%s\n", generate_mtrace_log("write", addr, len, data));
 }
