@@ -20,6 +20,7 @@
 
 #define MTRACE_LOG_BUF_SIZE 256
 FILE *mtrace_log_fp = NULL;
+vaddr_t temp_pc = 0x00000000;
 extern CPU_state cpu;
 
 // Nemu's log records call terminal instructions through makefile, passing in the path. 
@@ -40,13 +41,27 @@ static char* generate_mtrace_log(const char *op_type, paddr_t addr, int len, ...
     
     if (strcmp(op_type, "read") == 0) {
         word_t data = host_read(guest_to_host(addr), len);
-        snprintf(log_buf, sizeof(log_buf), 
+        if(cpu.pc != temp_pc) {
+            snprintf(log_buf, sizeof(log_buf), 
                  "[READ]   pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x", cpu.pc, addr, len, data);
+            temp_pc = cpu.pc;
+        } else {
+            snprintf(log_buf, sizeof(log_buf), 
+                 "[READ]   pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x, data(dec): %d", cpu.pc, addr, len, data, data);
+        }
+        
     } 
     else if (strcmp(op_type, "write") == 0) {
         word_t data = va_arg(args, word_t);
-        snprintf(log_buf, sizeof(log_buf), 
+        if(cpu.pc != temp_pc) {
+            snprintf(log_buf, sizeof(log_buf), 
                  "[WRITE]  pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x", cpu.pc, addr, len, data);
+            temp_pc = cpu.pc;
+        } else {
+            snprintf(log_buf, sizeof(log_buf), 
+                 "[WRITE]  pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x, data(dec): %d", cpu.pc, addr, len, data, data);
+        }
+        
     }
     else {
         snprintf(log_buf, sizeof(log_buf), 
