@@ -17,6 +17,7 @@
 #include <cpu/cpu.h>
 #include <cpu/ifetch.h>
 #include <cpu/decode.h>
+#include <ftrace/ftrace.h>
 
 #define R(i) gpr(i)
 #define Mr vaddr_read
@@ -67,11 +68,12 @@ The << 12 in the code implements this specification.
 // #define immB() do { *imm = SEXT((BITS(i, 31, 31) << 12) | (BITS(i, 7, 7) << 11) | (BITS(i, 30, 25) << 5) | BITS(i, 11, 8), 13) << 1;} while(0)
 #define immB() do { *imm = SEXT(BITS(i, 31, 31), 1) << 12 | (BITS(i, 7, 7) << 11) | (BITS(i, 30, 25) << 5) | BITS(i, 11, 8) << 1;} while(0)
 
+int rs1, rs2;
 
 static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_t *imm, int type) {
   uint32_t i = s->isa.inst;
-  int rs1 = BITS(i, 19, 15); // rs1 (source register 1): Always at bits [19:15].
-  int rs2 = BITS(i, 24, 20); // rs2 (source register 2): Always at bits [24:20].
+  rs1 = BITS(i, 19, 15); // rs1 (source register 1): Always at bits [19:15].
+  rs2 = BITS(i, 24, 20); // rs2 (source register 2): Always at bits [24:20].
   *rd     = BITS(i, 11, 7);  // rd (destination register): Always at bits [11:7].
   switch (type) {
     case TYPE_I: src1R();          immI(); break; // I-type: Immediate value is in bits [31:20] (a contiguous field).
@@ -148,8 +150,25 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? 110 ????? 11000 11", bltu   , B, if (src1 < src2) s->dnpc = s->pc + imm);
   INSTPAT("??????? ????? ????? 001 ????? 11000 11", bne    , B, if (src1 != src2) s->dnpc = s->pc + imm);
 
-  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    , J, s->dnpc = s->pc; s->dnpc += imm; R(rd) = s->pc + 4);
-  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   , I, s->dnpc = (src1 + imm) & ~(word_t)1; R(rd) = s->pc + 4);
+  INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    , J, {
+    s->dnpc = s->pc;
+    s->dnpc += imm;
+    if (rd == 1) {
+      ftrace_record_call(s->pc, s->dnpc);
+    }
+    R(rd) = s->pc + 4;
+  });
+
+  INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   , I, {
+    s->dnpc = (src1 + imm) & ~(word_t)1;
+    if (rd == 1) {
+      ftrace_record_call(s->pc, s->dnpc);
+    }else if (rd == 0 && rs1 == 1) {
+      ftrace_record_ret(s->pc, s->dnpc);
+    }
+    R(rd) = s->pc + 4;
+  });
+
 
   INSTPAT("??????? ????? ????? 000 ????? 00000 11", lb     , I, R(rd) = SEXT(Mr(src1 + imm, 1), 8));
   INSTPAT("??????? ????? ????? 100 ????? 00000 11", lbu    , I, R(rd) = Mr(src1 + imm, 1));

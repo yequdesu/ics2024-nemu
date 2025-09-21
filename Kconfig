@@ -181,7 +181,17 @@ config MTRACE
   help
     Run NEMU in mtrace mode may cause lots of log files.
     Which occupied lots of your disk.
-    
+
+config FTRACE
+  bool "Enable function call trace"
+  default n
+  help
+    Enable function call tracing in NEMU.
+    When enabled, NEMU will record function call information during execution,
+    which can be useful for debugging and performance analysis.
+    Note: Enabling ftrace may slightly impact emulation performance and
+    generate additional log output.
+
 choice
   prompt "Reference design"
   default DIFFTEST_REF_SPIKE if ISA_riscv

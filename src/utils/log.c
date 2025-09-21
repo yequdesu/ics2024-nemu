@@ -36,7 +36,11 @@ bool log_enable() {
 }
 
 bool mtrace_log_enable() {
-  return MUXDEF(CONFIG_TRACE, true, false);
+  return MUXDEF(CONFIG_MTRACE, true, false);
+}
+
+bool ftrace_log_enable() {
+  return MUXDEF(CONFIG_FTRACE, true, false);
 }
 
 #endif

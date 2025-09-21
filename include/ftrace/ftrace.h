@@ -18,10 +18,20 @@
 #include <memory/vaddr.h>
 #include <elf.h>
 
-
 typedef struct {
-    uint8_t address;
+    uint32_t address;
     char *fun_name;
 } FunMap;
 
+extern FunMap *func_map;
+extern int func_count;
+
 int parse_elf(const char *elf_file, FunMap **func_map, int *func_count);
+
+void init_ftrace();
+
+void ftrace_record_call(paddr_t pc, paddr_t target);
+
+void ftrace_record_ret(paddr_t pc, paddr_t target);
+
+char* get_func_name(paddr_t dnpc);

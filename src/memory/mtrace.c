@@ -19,7 +19,7 @@
 #include <isa.h>
 
 #define MTRACE_LOG_BUF_SIZE 256
-FILE *mtrace_log_fp = NULL;
+static FILE *mtrace_log_fp = NULL;
 vaddr_t temp_pc = 0x00000000;
 extern CPU_state cpu;
 

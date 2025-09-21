@@ -47,8 +47,9 @@ static char *log_file = NULL;
 static char *diff_so_file = NULL;
 static char *img_file = NULL;
 static int difftest_port = 1234;
-static FunMap *func_map = NULL;
-static int func_count = 0;
+FunMap *func_map = NULL;
+int func_count = 0;
+
 
 static long load_img() {
   if (img_file == NULL) {
@@ -122,6 +123,12 @@ void init_monitor(int argc, char *argv[]) {
   /* Parse arguments. */
   parse_args(argc, argv);
 
+  /* Initialize ftrace. */
+  init_ftrace();
+
+  /* Parse elf file. */
+  parse_elf(elf_file, &func_map, &func_count);
+
   /* Set random seed. */
   init_rand();
 
@@ -130,9 +137,6 @@ void init_monitor(int argc, char *argv[]) {
 
   /* Initialize mtrace. */
   init_mtrace();
-
-  /* Parse elf file */
-  parse_elf(elf_file, &func_map, &func_count);
 
   /* Initialize memory. */
   init_mem();
