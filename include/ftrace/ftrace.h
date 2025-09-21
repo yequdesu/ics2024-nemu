@@ -20,6 +20,7 @@
 
 typedef struct {
     uint32_t address;
+    int size;
     char *fun_name;
 } FunMap;
 

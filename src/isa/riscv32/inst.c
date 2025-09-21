@@ -163,7 +163,7 @@ static int decode_exec(Decode *s) {
     s->dnpc = (src1 + imm) & ~(word_t)1;
     if (rd == 1) {
       ftrace_record_call(s->pc, s->dnpc);
-    }else if (rd == 0 && rs1 == 1) {
+    } else if (rd == 0 && rs1 == 1) {
       ftrace_record_ret(s->pc, s->dnpc);
     }
     R(rd) = s->pc + 4;

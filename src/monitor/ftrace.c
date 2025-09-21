@@ -16,21 +16,15 @@
 #define FTRACE_LOG_BUF_SIZE 256
 #define CALL_STACK_SIZE 256
 
-typedef struct callstack_frame {
-    paddr_t addr;
-    char* func_name;
-} CS_frame;
-
 extern char *elf_file;
 static FILE *ftrace_log_fp = NULL;
-static CS_frame call_stack[CALL_STACK_SIZE] = {};
+static paddr_t call_stack[CALL_STACK_SIZE] = {};
 static int call_stack_top = 0;
 static char blanks[CALL_STACK_SIZE] = {};
 
 static void callstack_push(paddr_t addr, char* func_name) {
     if (call_stack_top < CALL_STACK_SIZE) {
-        call_stack[call_stack_top].addr = addr;
-        call_stack[call_stack_top].func_name = func_name;
+        call_stack[call_stack_top] = addr;
         call_stack_top++;
     } else {
         printf("ftrace: call stack overflow at %08x\n", addr);
@@ -60,9 +54,8 @@ void ftrace_record_call(paddr_t pc, paddr_t target) {
 }
 
 void ftrace_record_ret(paddr_t pc, paddr_t target) {
-    char* func_name = "???";
+    char* func_name = get_func_name(target);
     if (call_stack_top > 0) {
-        func_name = call_stack[call_stack_top - 1].func_name;
         callstack_pop();
     } else {
      printf("ftrace: call stack underflow at %08x\n", pc);
@@ -145,6 +138,7 @@ int parse_elf(const char *elf_file, FunMap **func_map, int *func_count) {
         unsigned char type = ELF32_ST_TYPE(symtab[i].st_info);
         if (type == STT_FUNC && symtab[i].st_name != 0 && symtab[i].st_value != 0) {
             (*func_map)[idx].address = symtab[i].st_value;
+            (*func_map)[idx].size = symtab[i].st_size;
             (*func_map)[idx].fun_name = strdup(strtab + symtab[i].st_name);
             idx++;
         }
@@ -162,7 +156,7 @@ int parse_elf(const char *elf_file, FunMap **func_map, int *func_count) {
 char* get_func_name(paddr_t dnpc) {
     int count = func_count;
     for(int i = 0; i < count; i++) {
-        if(func_map[i].address == dnpc) return func_map[i].fun_name;
+        if(func_map[i].address <= dnpc && dnpc <= func_map[i].address + func_map[i].size) return func_map[i].fun_name;
     }
     return "???";
 }
