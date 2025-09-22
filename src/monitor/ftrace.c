@@ -16,6 +16,7 @@
 #define FTRACE_LOG_BUF_SIZE 256
 #define CALL_STACK_SIZE 256
 
+#ifdef CONFIG_FTRACE
 extern char *elf_file;
 static FILE *ftrace_log_fp = NULL;
 static paddr_t call_stack[CALL_STACK_SIZE] = {};
@@ -92,7 +93,7 @@ char* get_section_name(FILE* file, Elf32_Ehdr* ehdr, Elf32_Shdr* shdrs, uint32_t
 
 int parse_elf(const char *elf_file, FunMap **func_map, int *func_count) {
     FILE* file = fopen(elf_file, "rb");
-    Assert(file, "Can not open '%s'", elf_file);
+    Assert(file, "Can not open '%s', attempt to disable ftrace in menuconfig and recompile", elf_file);
     Log("Elf file is %s", elf_file);
 
     Elf32_Ehdr ehdr;
@@ -160,3 +161,4 @@ char* get_func_name(paddr_t dnpc) {
     }
     return "???";
 }
+#endif

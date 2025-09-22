@@ -153,19 +153,23 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? ??? ????? 11011 11", jal    , J, {
     s->dnpc = s->pc;
     s->dnpc += imm;
+    #ifdef CONFIG_FTRACE
     if (rd == 1) {
       ftrace_record_call(s->pc, s->dnpc);
     }
+    #endif
     R(rd) = s->pc + 4;
   });
 
   INSTPAT("??????? ????? ????? 000 ????? 11001 11", jalr   , I, {
     s->dnpc = (src1 + imm) & ~(word_t)1;
+    #ifdef CONFIG_FTRACE
     if (rd == 1) {
       ftrace_record_call(s->pc, s->dnpc);
     } else if (rd == 0 && rs1 == 1) {
       ftrace_record_ret(s->pc, s->dnpc);
     }
+    #endif
     R(rd) = s->pc + 4;
   });
 

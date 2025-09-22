@@ -16,7 +16,9 @@
 #include <isa.h>
 #include <memory/paddr.h>
 #include <memory/mtrace.h>
+#ifdef CONFIG_FTRACE
 #include <ftrace/ftrace.h>
+#endif
 
 
 void init_rand();
@@ -47,9 +49,10 @@ static char *log_file = NULL;
 static char *diff_so_file = NULL;
 static char *img_file = NULL;
 static int difftest_port = 1234;
+#ifdef CONFIG_FTRACE
 FunMap *func_map = NULL;
 int func_count = 0;
-
+#endif
 
 static long load_img() {
   if (img_file == NULL) {
@@ -123,12 +126,13 @@ void init_monitor(int argc, char *argv[]) {
   /* Parse arguments. */
   parse_args(argc, argv);
 
+  #ifdef CONFIG_FTRACE
   /* Initialize ftrace. */
   init_ftrace();
-
+  
   /* Parse elf file. */
   parse_elf(elf_file, &func_map, &func_count);
-
+  #endif
   /* Set random seed. */
   init_rand();
 
