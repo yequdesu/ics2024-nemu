@@ -78,7 +78,7 @@ static long load_img() {
 
 static int parse_args(int argc, char *argv[]) {
   Log("argc: %d", argc);
-  char logs[256] = {};
+  char logs[1024] = {};
   if (argc > 1) {
         for (int i = 1; i < argc; i++) {
           strncat(strncat(logs, " ", sizeof(logs) - 1), argv[i], sizeof(logs) - 1);
