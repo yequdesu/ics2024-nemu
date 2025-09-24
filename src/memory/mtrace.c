@@ -19,6 +19,9 @@
 #include <isa.h>
 
 #define MTRACE_LOG_BUF_SIZE 256
+
+#ifdef CONFIG_MTRACE
+
 static FILE *mtrace_log_fp = NULL;
 vaddr_t temp_pc = 0x00000000;
 extern CPU_state cpu;
@@ -27,7 +30,7 @@ extern CPU_state cpu;
 // mtrace does not change the architecture to affect stability,
 // and chooses to directly specify the path to the same location.
 
-#ifdef CONFIG_MTRACE
+
 
 void init_mtrace() {
     mtrace_log_fp = fopen("/home/yequdesu/repos/ics2024/nemu/build/mtrace-log.txt", "w");
@@ -40,16 +43,15 @@ static char* generate_mtrace_log(const char *op_type, paddr_t addr, int len, ...
     va_start(args, len);
     
     if (strcmp(op_type, "read") == 0) {
-        word_t data = host_read(guest_to_host(addr), len);
+        // word_t data = host_read(guest_to_host(addr), len);
         if(cpu.pc != temp_pc) {
             snprintf(log_buf, sizeof(log_buf), 
-                 "[READ]   pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x", cpu.pc, addr, len, data);
+                 "[READ]   pc:0x%08x, addr: 0x%08x, len: %d bytes", cpu.pc, addr, len);
             temp_pc = cpu.pc;
         } else {
             snprintf(log_buf, sizeof(log_buf), 
-                 "[READ]   pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x, data(dec): %d", cpu.pc, addr, len, data, data);
+                 "[READ]   pc:0x%08x, addr: 0x%08x, len: %d bytes", cpu.pc, addr, len);
         }
-        
     } 
     else if (strcmp(op_type, "write") == 0) {
         word_t data = va_arg(args, word_t);
@@ -61,7 +63,6 @@ static char* generate_mtrace_log(const char *op_type, paddr_t addr, int len, ...
             snprintf(log_buf, sizeof(log_buf), 
                  "[WRITE]  pc:0x%08x, addr: 0x%08x, len: %d bytes, data: 0x%08x, data(dec): %d", cpu.pc, addr, len, data, data);
         }
-        
     }
     else {
         snprintf(log_buf, sizeof(log_buf), 
