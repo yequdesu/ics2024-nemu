@@ -31,11 +31,15 @@ CPU_state cpu = {};
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us
 static bool g_print_step = false;
+
+#ifndef CONFIG_TARGET_AM
 static int ir_head = 0, ir_tail = 0, ir_size = 0;
 static char buf[RINGBUF_SIZE][500] = {};
+#endif
 
 void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
 
+#ifndef CONFIG_TARGET_AM
 static void insert_iringbuf(const char i[], int *ir_size, int *ir_head, int *ir_tail) {
     strncpy(buf[*ir_tail], i, sizeof(buf[*ir_tail]) - 1);
     buf[*ir_tail][sizeof(buf[*ir_tail]) - 1] = '\0';
@@ -127,7 +131,7 @@ static char* generate_inst_info(const Decode s, bool trap) {
   
   return output_buf;
 }
-
+#endif
 
 
 
@@ -202,9 +206,11 @@ static void statistic() {
 }
 
 void assert_fail_msg() {
+  #ifndef CONFIG_TARGET_AM
   isa_reg_display();
-  statistic();
   display_iringbuf(ir_size, ir_head, ir_tail);
+  #endif
+  statistic();
 }
 
 /* Simulate how the CPU works. */
