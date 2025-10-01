@@ -18,8 +18,28 @@
 
 #include <common.h>
 
+enum {
+  CSR_MSTATUS = 0x300,
+  CSR_MISA    = 0x301,
+  CSR_MIE     = 0x304,
+  CSR_MTVEC   = 0x305,
+  CSR_MSCRATCH= 0x340,
+  CSR_MEPC    = 0x341,
+  CSR_MCAUSE  = 0x342,
+  CSR_MTVAL   = 0x343,
+  CSR_MIP     = 0x344
+};
+
+typedef struct {
+  word_t mtvec;
+  vaddr_t mepc;
+  word_t mstatus;
+  word_t mcause;
+} riscv32_CSR;
+
 typedef struct {
   word_t gpr[MUXDEF(CONFIG_RVE, 16, 32)];
+  riscv32_CSR csr;
   vaddr_t pc;
 } MUXDEF(CONFIG_RV64, riscv64_CPU_state, riscv32_CPU_state);
 

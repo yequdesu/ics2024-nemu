@@ -23,7 +23,16 @@ static inline int check_reg_idx(int idx) {
   return idx;
 }
 
+static inline int check_csr_idx(int idx) {
+  IFDEF(CONFIG_RT_CHECK, assert(idx >= 0 && idx < 0x1000));
+  return idx;
+}
+
 #define gpr(idx) (cpu.gpr[check_reg_idx(idx)])
+
+#define CSR(i) *csr_register(i)
+#define csr_read(idx) read_csr(idx)
+#define csr_write(idx, val) write_csr(idx, val)
 
 static inline const char* reg_name(int idx) {
   extern const char* regs[];

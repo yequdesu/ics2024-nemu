@@ -27,7 +27,7 @@
 #define MAX_INST_TO_PRINT 10
 #define RINGBUF_SIZE 10
 
-CPU_state cpu = {};
+CPU_state cpu = {}; // isa-def.h
 uint64_t g_nr_guest_inst = 0;
 static uint64_t g_timer = 0; // unit: us
 static bool g_print_step = false;
@@ -38,6 +38,7 @@ static char buf[RINGBUF_SIZE][500] = {};
 #endif
 
 void disassemble(char *str, int size, uint64_t pc, uint8_t *code, int nbyte);
+
 
 #ifndef CONFIG_TARGET_AM
 static void insert_iringbuf(const char i[], int *ir_size, int *ir_head, int *ir_tail) {

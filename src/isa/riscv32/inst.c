@@ -20,6 +20,8 @@
 #include <ftrace/ftrace.h>
 
 #define R(i) gpr(i)
+#define Cr(i) csr_read(i)
+#define Cw(i, j) csr_write(i, j)
 #define Mr vaddr_read
 #define Mw vaddr_write
 
@@ -27,6 +29,8 @@ enum {
   TYPE_I, TYPE_U, TYPE_S, TYPE_J, TYPE_B, TYPE_R,
   TYPE_N, // none
 };
+
+
 
 /*
 Instruction Encoding Format:
@@ -89,6 +93,7 @@ static void decode_operand(Decode *s, int *rd, word_t *src1, word_t *src2, word_
 }
 
 static int decode_exec(Decode *s) {
+  write_csr(0x300, 0x1800);
   s->dnpc = s->snpc;
 
 #define INSTPAT_INST(s) ((s)->isa.inst)
@@ -100,7 +105,12 @@ static int decode_exec(Decode *s) {
 }
 
   INSTPAT_START();
-  
+  /*
+  0000000 ?????  ?????  000    ?????  01100 11
+  |_____| |____| |____| |___|  |____| |______|
+  imm     rs2    rs1    funct3 rd     opcode
+
+  */
   INSTPAT("0000000 ????? ????? 000 ????? 01100 11", add    , R, R(rd) = src1 + src2);
   INSTPAT("??????? ????? ????? 000 ????? 00100 11", addi   , I, R(rd) = src1 + imm);
   INSTPAT("??????? ????? ????? 000 ????? 00110 11", addiw  , I, R(rd) = SEXT(src1 + imm, 32));
@@ -195,8 +205,13 @@ static int decode_exec(Decode *s) {
   INSTPAT("??????? ????? ????? 001 ????? 01000 11", sh     , S, Mw(src1 + imm, 2, src2));
   INSTPAT("??????? ????? ????? 010 ????? 01000 11", sw     , S, Mw(src1 + imm, 4, src2));
 
+  INSTPAT("??????? ????? ????? 001 ????? 11100 11", csrrw  , I, R(rd) = Cr(imm); Cw(imm, src1));
+  INSTPAT("??????? ????? ????? 010 ????? 11100 11", csrrs  , I, R(rd) = Cr(imm); Cw(imm, Cr(imm) | src1));
+  INSTPAT("0000000 00000 00000 000 00000 11100 11", ecall  , I, ECALL(s->dnpc)); // Used to call intr
+  INSTPAT("0011000 00010 00000 000 00000 11100 11", mret   , I, MRET(s->dnpc, Cr(CSR_MEPC), Cr(CSR_MCAUSE)));
   INSTPAT("0000000 00001 00000 000 00000 11100 11", ebreak , N, NEMUTRAP(s->pc, R(10))); // R(10) is $a0
   INSTPAT("??????? ????? ????? ??? ????? ????? ??", inv    , N, INV(s->pc)); // Used to handle Invalid instructions
+  
 
   INSTPAT_END();
 

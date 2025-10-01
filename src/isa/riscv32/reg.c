@@ -41,3 +41,39 @@ word_t isa_reg_str2val(const char *s, bool *success) {
   *success = false;
   return 0;
 }
+
+word_t read_csr(int idx) {
+  idx = check_csr_idx(idx);
+  switch (idx) {
+    case 0x300: return cpu.csr.mstatus;
+    case 0x305: return cpu.csr.mtvec;
+    case 0x341: return cpu.csr.mepc;
+    case 0x342: return cpu.csr.mcause;
+    default: panic("Unknown csr idx in reading");
+  }
+}
+
+void write_csr(int idx, word_t value) {
+  idx = check_csr_idx(idx);
+  switch (idx) {
+    case 0x300: cpu.csr.mstatus = value; break;
+    case 0x305: cpu.csr.mtvec = value; break;
+    case 0x341: cpu.csr.mepc = value; break;
+    case 0x342: cpu.csr.mcause = value; break;
+    default: panic("Unknown csr idx in writing");
+  }
+}
+
+word_t csr2idx(int csr) {
+  switch (csr) {
+    case 0x300: return 0; // mstatus
+    case 0x301: return 1; // misa (如果不需要可以忽略)
+    case 0x305: return 2; // mtvec
+    case 0x341: return 3; // mepc
+    case 0x342: return 4; // mcause
+    default:
+      printf("[ERROR] 未知的 CSR 寄存器: 0x%x\n", csr);
+      assert(0);
+      return -1;
+  }
+}
